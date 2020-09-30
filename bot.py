@@ -22,9 +22,13 @@ async def create_db_pool():
 async def close_db():
     await bot.db.close()
 
-# Uses privileged gateway intents of the Discord API. Enable members intents in the developer portal before running
-intents = discord.Intents.default()
-intents.members = True
+# Uses privileged gateway intents of the Discord API. Enable guild members and presence intents in the developer portal before running
+# Logically, presence intents need not be enabled, but in Robo VJ, disabling presence inetnts broke some functionality
+# Therefore I feel it's better to just opt in for both. Both require whitelisting anyway.
+# You can choose to disable presences if you wish. It might still work.
+#intents = discord.Intents.default()
+#intents.members = True
+intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='$', help_command=EmbedHelpCommand(dm_help=None, dm_help_threshold=10),
                    owner_id=411166117084528640, intents=intents)
 
