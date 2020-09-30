@@ -1,4 +1,4 @@
-from discord.ext import commands
+from discord.ext import commands, tasks
 import discord
 import asyncpg
 import asyncio
@@ -10,17 +10,17 @@ TIMEOUT = 25
 class Quiz(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self._db = bot.db
         self.in_play = False
         self.prepare_db.start()
         self._current = []
 
     @tasks.loop(count=1)
     async def prepare_db(self):
+        self._db = self.bot.db
         await self._db.execute("""CREATE TABLE IF NOT EXISTS quiz_config (id SERIAL PRIMARY KEY, name TEXT, description TEXT);
         CREATE TABLE IF NOT EXISTS questions (id SERIAL PRIMARY KEY, quiz_id INTEGER, question TEXT, option1 TEXT, option2 TEXT, option3 TEXT, option4 TEXT, correct INTEGER);""")
         self.ids = []
-        records = self._db.fetch("SELECT * FROM quiz_config")
+        records = await self._db.fetch("SELECT * FROM quiz_config")
         for record in records:
             self.ids.append(record['id'])
         print("================\nMed Quiz Cog loaded")
@@ -95,7 +95,7 @@ class Quiz(commands.Cog):
             if question['2'] != '':
                 embed.add_field(name="2\N{variation selector-16}\N{combining enclosing keycap}", value=question['2'])
                 reactions.append("2\N{variation selector-16}\N{combining enclosing keycap}")
-            if question['3'] != ''
+            if question['3'] != '':
                 embed.add_field(name="3\N{variation selector-16}\N{combining enclosing keycap}", value=question['3'])
                 reactions.append("3\N{variation selector-16}\N{combining enclosing keycap}")
             if question['4'] != '':

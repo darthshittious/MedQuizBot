@@ -20,6 +20,6 @@
   password = '' # password for the user specified above
   database = '' # the database to connect to in your host
   ```
-  - This code uses v1.5 of discord.py, which requires you to specify gateway intents. You must enable member and presence intents in the developer portal for the bot to function.
+  - This code uses v1.5 of discord.py, which requires you to specify gateway intents. You must enable member intents in the developer portal for the bot to function.
   - Run `bot.py` in your virtual environment using a process manager of your choice.
    

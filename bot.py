@@ -21,9 +21,12 @@ async def create_db_pool():
 
 async def close_db():
     await bot.db.close()
- 
+
+# Uses privileged gateway intents of the Discord API. Enable members intents in the developer portal before running
+intents = discord.Intents.default()
+intents.members = True
 bot = commands.Bot(command_prefix='$', help_command=EmbedHelpCommand(dm_help=None, dm_help_threshold=10),
-        owner_id=411166117084528640, intents=discord.Intents.all())
+                   owner_id=411166117084528640, intents=intents)
 
 @tasks.loop(count=1)
 async def startup():
