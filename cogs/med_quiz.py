@@ -49,13 +49,13 @@ class Quiz(commands.Cog):
                     await self._db.execute("DELETE FROM quiz_config WHERE id = $1", id)
                     await self._db.execute("DELETE FROM questions WHERE quiz_id = $1", id)
                     return await ctx.send("Something went wrong while processing your file. Please try again.")
-        self.ids.append(id)        
+        self.ids.append(id)
         await ctx.send(f"Loaded quiz into database with id **{id}**. Please make note of this as it is needed while starting the quiz.")
 
     @commands.command(name="start")
     @commands.guild_only()
     async def _start(self, ctx, id, score_type='static'):
-
+        """Starts the quiz with the specified ID. It is recommended to do this is a channel where members don't have 'Add reactions' permissions"""
         if self.in_play:
             return await ctx.send("A quiz is already in progress")
         try:
@@ -68,58 +68,68 @@ class Quiz(commands.Cog):
 
         quiz_data = await self._db.fetchrow("SELECT * FROM quiz_config WHERE id = $1", id)
         name = quiz_data['name']
-        desc = quiz_data['description']
+        desc = quiz_data['description'] or "\u200b"
         self.questions = []
         ques_records = await self._db.fetch("SELECT * FROM questions WHERE quiz_id = $1", id)
         for record in ques_records:
-            questions.append({
+            self.questions.append({
                 'question' : record['question'],
                 '1' : record['option1'],
                 '2' : record['option2'],
                 '3' : record['option3'],
-                '4' : record['option4']
+                '4' : record['option4'],
                 'Correct' : record['correct']})
-        random.shuffle(self.questions)    
-        await ctx.send("Questions loaded. Starting in 5 seconds")
+        random.shuffle(self.questions)
+        await ctx.send("Questions loaded. Starting in 5 seconds", embed=discord.Embed(title=name, description=desc, colour=discord.Colour.blurple()))
         self.in_play = True
         self._lb = dict()
         await asyncio.sleep(5)
-        for num, question in enumerate(questions, 1):
+        for num, question in enumerate(self.questions, 1):
+            # If this loop is interrupted, big F
             reactions = []
             self._score = MAX_POINTS
             embed = discord.Embed(title=f"Question {num}:", description=question['question'], colour=discord.Colour.green())
             if question['1'] != '':
                 embed.add_field(name="1\N{variation selector-16}\N{combining enclosing keycap}", value=question['1'])
                 reactions.append("1\N{variation selector-16}\N{combining enclosing keycap}")
-            if question['2'] != '':    
+            if question['2'] != '':
                 embed.add_field(name="2\N{variation selector-16}\N{combining enclosing keycap}", value=question['2'])
                 reactions.append("2\N{variation selector-16}\N{combining enclosing keycap}")
-            if question['3'] != ''    
+            if question['3'] != ''
                 embed.add_field(name="3\N{variation selector-16}\N{combining enclosing keycap}", value=question['3'])
                 reactions.append("3\N{variation selector-16}\N{combining enclosing keycap}")
             if question['4'] != '':
                 embed.add_field(name="4\N{variation selector-16}\N{combining enclosing keycap}", value=question['4'])
                 reactions.append("4\N{variation selector-16}\N{combining enclosing keycap}")
             msg = await ctx.send(embed=embed)
+            self._current = [msg.id, question['Correct'], []]
             for reaction in reactions:
                 await msg.add_reaction(reaction)
-            self._current = [msg.id, question['Correct'], []]
             for _ in range(TIMEOUT):
                 await asyncio.sleep(1)
                 if score_type.lower() == 'dynamic':
                     self._score -= MAX_POINTS / TIMEOUT
+            # Time up here
+            time_up_text = f"""**Time up!**\nThe answers of the following members have been recorded:
+
+            {chr(10).join([ctx.guild.get_member(member_id).mention for member_id in self._current[2]])}"""
             self._current = []
-            await ctx.send(embed=discord.Embed(title=f"Question {num}:", description=f"{question['question']}\n\n:white_check_mark: {question['correct']}", colour=discord.Colour.red()))
-                    
+            await msg.edit(content=time_up_text, embed=discord.Embed(title=f"Question {num}:", description=f"{question['question']}\n\n:white_check_mark: {question['correct']}", colour=discord.Colour.red()))
+            await msg.clear_reactions()
+
         await self._publish(ctx)
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload):
         if not self._current:
+            # time up, or not in play
             return
         if not payload.message_id == self._current[0] or not self.in_play:
+            # wrong message, or not in play
             return
         if payload.user_id in self._current[2]:
+            # already answered
+            await self.bot.get_channel(payload.channel_id).get_message(payload.message_id).remove_reaction(str(reaction.emoji), self.bot.get_user(payload.user_id))
             return
         message_dict = {
                 "1\N{variation selector-16}\N{combining enclosing keycap}" : 1,
@@ -127,11 +137,13 @@ class Quiz(commands.Cog):
                 "3\N{variation selector-16}\N{combining enclosing keycap}" : 3,
                 "4\N{variation selector-16}\N{combining enclosing keycap}" : 4}
         if message_dict.get(str(payload.emoji)) == self._current[1] and payload.user_id != self.bot.user.id:
+            # answered in time, and got it right
             self._lb[payload.user_id] = self._lb.get(payload.user_id, 0) + self._score
         if not payload.user_id == self.bot.user.id:
+            # in all cases, except the bot's default reaction
             await self.bot.get_channel(payload.channel_id).get_message(payload.message_id).remove_reaction(str(reaction.emoji), self.bot.get_user(payload.user_id))
-            self._current[3].append(payload.user_id)
-    
+            self._current[2].append(payload.user_id)
+
     async def _publish(self, ctx):
         self._current = []
         self.in_play = False

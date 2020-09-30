@@ -1,6 +1,8 @@
 config.py
+# python cache files
 *.pyc
 **/__pycache__/
+# emacs autosave files
 *~
 # pycharm
 .idea/
