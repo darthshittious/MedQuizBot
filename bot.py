@@ -46,7 +46,7 @@ async def on_guild_join(guild):
 
     Reactions once added are removed after recording and cannot be changed.
 
-    Running more than one quiz simultaneously, across all servers, is disallowed. This is because game state cannot be tracked per server without making expensive database calls, since memory is too low to cache. If you wish to run your own instance or contribute to development, I am open source [here](https://github.com/bowtiesarecool26/MedQuizBot/)
+    Running more than one quiz simultaneously, across all servers, is disallowed. This is because game state cannot be tracked per server without making expensive database calls, since memory is too low to cache. If you wish to run your own instance or contribute to development, I am open source [here](https://github.com/darthshittious/MedQuizBot/)
 
     Cheers and happy quizzing!"""
     embed.set_author(name=guild.me, icon_url=guild.me.avatar_url)
